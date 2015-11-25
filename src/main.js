@@ -1,3 +1,4 @@
+'use strict';
 var println = console.log.bind(console)
 
 function executeRange(start, end, fn) {
@@ -18,8 +19,9 @@ Array.prototype.scan = function(fn, start) {
 Array.prototype.takeWhile = function(fn) {
     let results = []
     for (let i = 0; i < this.length; i++) {
-        if (fn(this[i]))
-            results.push(i)
+        let val = this[i];
+        if (fn(val))
+            results.push(val)
         else
             return results
     }
@@ -72,13 +74,13 @@ function BasicSolver(learning_rate, momentum) {
 }
 
 BasicSolver.prototype.feed_forward = function(input_layer, output_layer) {
-    let input_size = input_layer.length;
-    let output_size = output_layer.length;
+    let input_size = input_layer.size;
+    let output_size = output_layer.size;
     let result = 0.0;
 
     executeRange(0, output_size, (i) => {
         let bias = output_layer.biases[i];
-        let sum = input_layer.neurons.reduce( (sum, [j, input_neuron]) => {
+        let sum = input_layer.neurons.reduce( (sum, input_neuron, j) => {
             let weight_index = (input_size * i) + j;
             return sum + output_layer.weights[weight_index] * input_neuron
         }, bias);
@@ -86,25 +88,26 @@ BasicSolver.prototype.feed_forward = function(input_layer, output_layer) {
         result = 1.0 / (1.0 + Math.exp(-sum));
         output_layer.neurons[i] = result;
     })
-
+   
     return result
 }
 
 //BasicSolver.prototype.calculate_deltas(input_layer: Option<&RefCell<Layer>>, output_layer: &mut Layer) {
 BasicSolver.prototype.calculate_deltas = function(input_layer, output_layer) {
-    let output_size = output_layer.length;
+    let output_size = output_layer.size;
 
     executeRange(0, output_size, (i) => {
         let neuron = output_layer.neurons[i];
-
+        let error;
+      
         if (input_layer != null) {
             let layer = input_layer
-            let error = layer.deltas.reduce((sum, [j, delta]) => {
+            error = layer.deltas.reduce((sum, delta, j) => {
                 let weight_index = (output_size * j) + i;
                 return sum + (delta * layer.weights[weight_index])
             }, 0.0)
         } else {
-            let error = this.target_output[i] - neuron
+            error = this.target_output[i] - neuron
         }
 
         output_layer.errors[i] = error;
@@ -113,15 +116,15 @@ BasicSolver.prototype.calculate_deltas = function(input_layer, output_layer) {
 }
 
 BasicSolver.prototype.adjust_weights = function(input_layer, output_layer) {
-    let input_size = input_layer.length;
-    let output_size = output_layer.length;
+    let input_size = input_layer.size;
+    let output_size = output_layer.size;
     let learning_rate = this.learning_rate;
     let momentum = this.momentum;
 
     executeRange(0, output_size, (i) => {
         let delta = output_layer.deltas[i];
 
-        input_layer.neurons.forEach(([j, neuron]) => {
+        input_layer.neurons.forEach((neuron, j) => {
             let change_index = (input_size * i) + j;
             let change = output_layer.changes[change_index];
 
@@ -142,13 +145,9 @@ function Network(sizes) {
     this.solver = new BasicSolver(0.3, 0.1)
     this.layers = 
         sizes.
-            scan((prev_size, size) => {
-                let result = layer(size, prev_size)
-                prev_size = size;
-                return result
-            }, 0).
-            // map(|layer| RefCell::new(layer)).
-            map((layer) => layer)
+            scan((prev_layer, size) => {
+                return layer(size, prev_layer.size);
+            }, 0)
 }
 
 // Network.prototype.run = function(input: &Vec<f32>) -> f32 {
@@ -173,7 +172,7 @@ Network.prototype.run = function(input) {
 
 //Network.prototype.train = function(data: &Vec<(Vec<f32>, Vec<f32>)>) -> f32 {
 Network.prototype.train = function(data) {
-    return Array(20000).fill(1)
+    return Array(1).fill(1)
         .map((_) => {
             return data.reduce((sum, [input, target]) => {
                 return sum + this.train_pattern(input, target)
@@ -190,7 +189,7 @@ Network.prototype.train_pattern = function(input, target) {
 
     let output_layer = this.layers[this.layers.length - 1]
 
-    this.mean_squared_error(output_layer.errors)
+    return this.mean_squared_error(output_layer.errors);
 }
 
 Network.prototype.calculate_deltas = function(target) {
@@ -235,7 +234,7 @@ let data = [
 
 xor_net.train(data);
 
-println("{:?}", Math.round(xor_net.run([0.0, 0.0]))); 
-println("{:?}", Math.round(xor_net.run([0.0, 1.0]))); 
-println("{:?}", Math.round(xor_net.run([1.0, 1.0])))
-println("{:?}", Math.round(xor_net.run([1.0, 0.0])))
+println(Math.round(xor_net.run([0.0, 0.0]))); 
+println(Math.round(xor_net.run([0.0, 1.0]))); 
+println(Math.round(xor_net.run([1.0, 1.0])))
+println(Math.round(xor_net.run([1.0, 0.0])))
