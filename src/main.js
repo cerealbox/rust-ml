@@ -198,12 +198,12 @@ Network.prototype.calculate_deltas = function(target) {
 
     let layers_len = this.layers.length
 
-    executeRange(0, layers_len, (i) => {
+    for (let i = layers_len - 1; i >= 0; i--) {
         let input_layer = this.layers[i + 1]
         let output_layer = this.layers[i]
 
         this.solver.calculate_deltas(input_layer, output_layer);
-    })
+    }
 }
 
 Network.prototype.adjust_weights = function() {
